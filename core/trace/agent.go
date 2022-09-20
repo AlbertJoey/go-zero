@@ -21,7 +21,7 @@ const (
 	kindJaeger     = "jaeger"
 	kindZipkin     = "zipkin"
 	kindSkywalking = "skywalking"
-	kindGrpc   = "grpc"
+	kindGrpc       = "grpc"
 )
 
 var (
@@ -63,11 +63,11 @@ func createExporter(c Config) (sdktrace.SpanExporter, error) {
 	case kindSkywalking:
 		return NewSkywalking(c.Endpoint, c.Name)
 	case kindGrpc:
-		return otlptracegrpc.NewUnstarted(
+		return otlptracegrpc.New(context.Background(),
 			otlptracegrpc.WithInsecure(),
 			otlptracegrpc.WithEndpoint(c.Endpoint),
 			otlptracegrpc.WithDialOption(grpc.WithBlock()),
-		), nil
+		)
 	default:
 		return nil, fmt.Errorf("unknown exporter: %s", c.Batcher)
 	}
