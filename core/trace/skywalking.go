@@ -3,6 +3,8 @@ package trace
 import (
 	"context"
 	"fmt"
+	"github.com/SkyAPM/go2sky/propagation"
+	"hash/crc32"
 	"time"
 
 	"github.com/SkyAPM/go2sky"
@@ -30,6 +32,12 @@ func NewSkywalking(endpoint, serviceName string) (*Exporter, error) {
 
 func (e *Exporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
 	for _, s := range spans {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		fmt.Println("-----------------start------------------")
 		fmt.Println("name:", s.Name())
 		fmt.Println("SpanContext:", s.SpanContext())
@@ -49,47 +57,33 @@ func (e *Exporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpa
 		fmt.Println("DroppedLinks:", s.DroppedLinks())
 		fmt.Println("DroppedEvents:", s.DroppedEvents())
 		fmt.Println("ChildSpanCount:", s.DroppedEvents())
-		//span, _, err := e.Tracer.CreateEntrySpan(ctx, s.Name(), func(key string) (string, error) {
-		//	scx := propagation.SpanContext{}
-		//	if !s.Parent().TraceID().IsValid() { //parent
-		//		spanid := ([8]byte)(s.SpanContext().SpanID())
-		//		sid := crc32.ChecksumIEEE(spanid[:]) / 2
-		//		scx = propagation.SpanContext{
-		//			Sample:                1,
-		//			TraceID:               s.SpanContext().TraceID().String(),
-		//			ParentSegmentID:       s.Parent().SpanID().String(),
-		//			ParentSpanID:          int32(sid),
-		//			ParentService:         s.Name(),
-		//			ParentServiceInstance: s.Name(),
-		//			ParentEndpoint:        s.Name(),
-		//			AddressUsedAtClient:   s.Name(),
-		//		}
-		//	} else { //child
-		//		spanid := ([8]byte)(s.Parent().SpanID())
-		//		sid := crc32.ChecksumIEEE(spanid[:]) / 2
-		//		scx = propagation.SpanContext{
-		//			Sample:                1,
-		//			TraceID:               s.SpanContext().TraceID().String(),
-		//			ParentSegmentID:       s.Parent().SpanID().String(),
-		//			ParentSpanID:          int32(sid),
-		//			ParentService:         s.Name(),
-		//			ParentServiceInstance: s.Name(),
-		//			ParentEndpoint:        s.Name(),
-		//			AddressUsedAtClient:   s.Name(),
-		//		}
-		//	}
-		//
-		//	return scx.EncodeSW8(), nil
-		//})
-		//if err != nil {
-		//	fmt.Println("err:", err)
-		//}
-		//span.SetComponent(8888)
-		//span.Tag(go2sky.TagURL, s.Name())
-		//span.SetSpanLayer(0)
-		//span.Tag(go2sky.TagStatusCode, "200")
-		//span.Tag(go2sky.TagURL, s.Name())
-		//span.End()
+
+		span, _, err := e.Tracer.CreateEntrySpan(ctx, s.Name(), func(key string) (string, error) {
+			correlationContext := make(map[string]string)
+			for _, kv := range s.Attributes() {
+				correlationContext[string(kv.Key)] = kv.Value.AsString()
+			}
+			spanid := ([8]byte)(s.Parent().SpanID())
+			sid := crc32.ChecksumIEEE(spanid[:]) / 2
+			scx := propagation.SpanContext{
+				Sample:                0,
+				TraceID:               s.SpanContext().TraceID().String(),
+				ParentSegmentID:       s.Parent().TraceID().String(),
+				ParentSpanID:          int32(sid),
+				ParentService:         s.Parent().TraceID().String(),
+				ParentServiceInstance: s.Parent().TraceID().String(),
+				ParentEndpoint:        s.Parent().TraceID().String(),
+				AddressUsedAtClient:   s.SpanKind().String(),
+				CorrelationContext:    correlationContext,
+			}
+			return scx.EncodeSW8(), nil
+		})
+		if err != nil {
+			fmt.Println("err:", err)
+		}
+		span.SetOperationName(s.Name())
+		span.SetPeer(s.Name())
+		span.End()
 	}
 	return nil
 }
