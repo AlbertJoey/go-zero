@@ -2,7 +2,6 @@ package trace
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -31,8 +30,25 @@ func NewSkywalking(endpoint, serviceName string) (*Exporter, error) {
 
 func (e *Exporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
 	for _, s := range spans {
-		traceBytes, _ := json.Marshal(s)
-		fmt.Println("trace:", string(traceBytes))
+		fmt.Println("-----------------start------------------")
+		fmt.Println("name:", s.Name())
+		fmt.Println("SpanContext:", s.SpanContext())
+		fmt.Println("Parent:", s.Parent())
+		fmt.Println("SpanKind:", s.SpanKind())
+		fmt.Println("StartTime:", s.StartTime())
+		fmt.Println("EndTime:", s.EndTime())
+		fmt.Println("Attributes:", s.Attributes())
+		fmt.Println("SpanContext:", s.SpanContext())
+		fmt.Println("Links:", s.Links())
+		fmt.Println("Events:", s.Events())
+		fmt.Println("Status:", s.Status())
+		fmt.Println("InstrumentationScope:", s.InstrumentationScope())
+		fmt.Println("InstrumentationLibrary:", s.InstrumentationLibrary())
+		fmt.Println("Resource:", s.Resource())
+		fmt.Println("DroppedAttributes:", s.DroppedAttributes())
+		fmt.Println("DroppedLinks:", s.DroppedLinks())
+		fmt.Println("DroppedEvents:", s.DroppedEvents())
+		fmt.Println("ChildSpanCount:", s.DroppedEvents())
 		//span, _, err := e.Tracer.CreateEntrySpan(ctx, s.Name(), func(key string) (string, error) {
 		//	scx := propagation.SpanContext{}
 		//	if !s.Parent().TraceID().IsValid() { //parent
